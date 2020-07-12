@@ -1,5 +1,6 @@
 import re
 
+
 def removeComments(text):
     """ remove c-style comments.
         text: blob of text with comments (can include newlines)
@@ -34,28 +35,83 @@ def commentRemover(text):
     )
     return re.sub(pattern, replacer, text)
 
+def getMetadata(statments):
+    pattern= {
+    'libname':r'\s*Libname\s+(\w+)',
+    'include': r'\s*%include\s+',
+    'fileref': r'\s*Filename\s+(\w+)',
+    'proc_import':r'\s*proc\s+import',
+    'proc_export':r'\s*proc\s+export'
+    }
+    metadata= {
+        'libname':[],
+        'include':[],
+        'fileref':[],
+        'proc_import':[],
+        'proc_export':[]
+    }
+    for stmt in statments:
+        p= pattern['libname']
+        match= re.search(p, stmt, re.IGNORECASE)
+        if match:
+            path= getUnixPath(stmt)
+            if path:
+                obj= {'name':match.group(1),'location':path}
+                metadata['libname'].append(obj)
 
-def defination_search(text):
-    libx= r'Libname (\w+)'
-    match= re.search(libx, text, re.IGNORECASE)
-    if match:
-        return {'type':'libref','name':match.group(1)}
-
-    filex= r'Filename (\w+)'
-    match= re.search(filex, text, re.IGNORECASE)
-    if match: 
-        return {'type':'fileref','name':match.group(1)}
         
+        p= pattern['fileref']
+        match= re.search(p, stmt, re.IGNORECASE)
+        if match: 
+            path= getUnixPath(stmt)
+            if path:
+                obj= {'name':match.group(1),'location':path}
+                metadata['fileref'].append(obj)
+        
+        p= pattern['include']
+        match= re.search(p, stmt, re.IGNORECASE)
+        if match: 
+            path= getUnixPath(stmt)
+            if path:
+                obj= {'location':path}
+                metadata['include'].append(obj)
+       
+        p= pattern['proc_import']
+        match= re.search(p, stmt, re.IGNORECASE)
+        if match: 
+            path= getUnixPath(stmt)
+            if path:
+                obj= {'location':path}
+                metadata['proc_import'].append(obj)
+
+        p= pattern['proc_export']
+        match= re.search(p, stmt, re.IGNORECASE)
+        if match: 
+            path= getUnixPath(stmt)
+            if path:
+                obj= {'location':path}
+                metadata['proc_export'].append(obj)
+                
+    print(metadata)
+
+
+def getUnixPath(input):
+
+    regx= r'(/[\w]+)+(\.\w{1,7})?'
+    
+    unix_path= re.search(regx, input)
+    if unix_path:
+        return unix_path.group(0)
+    else:
+        return None
+
 if __name__ == "__main__":
 
-    with open('code.sas') as f:
-        uncmtFile = commentRemover(f.read())
+    with open("code.sas") as c:
+        uncmtFile = commentRemover(c.read())
         # cleaning
         uncmtFile= uncmtFile.replace('\n',' ')
-        uncmtFile = re.sub('\s+', ' ',uncmtFile);
-
+        uncmtFile = re.sub('\s+', ' ',uncmtFile)
         statements= uncmtFile.split(';')
-
-    # print(statements)
-    s= defination_search('  Filename tis_misops "/just/a/test/location"')
-    print(s)
+        getMetadata(statements)
+    
