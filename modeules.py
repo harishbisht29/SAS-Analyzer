@@ -1,5 +1,5 @@
 import re
-
+import os
 
 def removeComments(text):
     """ remove c-style comments.
@@ -35,20 +35,27 @@ def commentRemover(text):
     )
     return re.sub(pattern, replacer, text)
 
+
+
 def getMetadata(statments):
     pattern= {
     'libname':r'\s*Libname\s+(\w+)',
     'include': r'\s*%include\s+',
     'fileref': r'\s*Filename\s+(\w+)',
     'proc_import':r'\s*proc\s+import',
-    'proc_export':r'\s*proc\s+export'
+    'proc_export':r'\s*proc\s+export',
+    'input_table':r'\s+(from|set|join)\s+(\w+\.?\w*)',
+    'output_table':r'\s+(data|create table)\s+(\w+\.?\w*)',
+    # 'output_table':,
     }
     metadata= {
         'libname':[],
         'include':[],
         'fileref':[],
         'proc_import':[],
-        'proc_export':[]
+        'proc_export':[],
+        'input_table':[],
+        'output_table':[]
     }
     for stmt in statments:
         p= pattern['libname']
@@ -91,9 +98,76 @@ def getMetadata(statments):
             if path:
                 obj= {'location':path}
                 metadata['proc_export'].append(obj)
-                
-    print(metadata)
 
+        p =pattern['input_table']
+        match= re.search(p, stmt, re.IGNORECASE)
+        if match:
+            for m in re.findall(p,stmt):
+                table= m[1]
+                if table.upper() == "CONNECTION":
+                    continue
+                # print(m)
+                if table not in metadata['output_table']:
+                    metadata['input_table'].append(table)
+
+        p =pattern['output_table']
+        match= re.search(p, stmt, re.IGNORECASE)
+        if match:
+            table= match.group(2)
+            metadata['output_table'].append(table)
+    print(metadata)
+    return metadata
+
+def getFileName(location):
+    return(os.path.basename(location))
+
+def resolveReference(input, references):
+    output= []
+
+    for i in input:
+        
+        if 'ACCS_PRODV' in i.upper():
+            if '.' in i:
+                output.append(i.split('.')[1])
+            else:
+                output.append(i)
+        elif '.' in i:
+            ref= i.split('.')[0]
+            f =i.split('.')[1]
+
+            for l in references:
+                if l['name'].upper() == ref.upper():
+                    resolved= os.path.join(l['location'], f)
+                    output.append(resolved)
+                    break
+    return output
+
+def generateOutputFile(metadata, code_file):
+
+    code= getFileName(code_file)
+    # Application name
+    application_name= os.path.splitext(code)[0]
+    # Command Programs
+    common_programs= [i['location'] for i in metadata['include']]
+    # Program Location
+    program_location= os.path.dirname(code_file)
+    # output Location
+    export_locations= [i['location'] for i in metadata['proc_export']]
+    resolved= resolveReference(metadata['output_table'], metadata['libname'])
+
+    output_location= resolved+ export_locations
+
+    output={
+        "application_name":application_name,
+        "program_name":code,
+        "common_programs":common_programs,
+        "program_location":program_location,
+        "output_location":output_location,
+        # "output_file":,
+        # "status":,
+        # "input_file":
+    }
+    print(output)
 
 def getUnixPath(input):
 
@@ -106,12 +180,14 @@ def getUnixPath(input):
         return None
 
 if __name__ == "__main__":
-
-    with open("code.sas") as c:
+    code= '/home/immortal/Codes/SAS-Analyzer/code.sas'
+    with open(code) as c:
+        cfile= getFileName(code)
         uncmtFile = commentRemover(c.read())
         # cleaning
         uncmtFile= uncmtFile.replace('\n',' ')
         uncmtFile = re.sub('\s+', ' ',uncmtFile)
         statements= uncmtFile.split(';')
-        getMetadata(statements)
+        metadata= getMetadata(statements)
+        generateOutputFile(metadata, cfile)
     
