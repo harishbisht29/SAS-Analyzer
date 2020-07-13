@@ -1,9 +1,9 @@
 before /* Print the contents of the most recently used dataset using the PRINT procedure.*/ after
 
-Libname   Input1 "/use_r/bin/harish/";
-Libname Input2 '/this/is/te_st/location";
+Libname   Input1 "/home/immortal/Codes/Staging";
+Libname Input2 '/home/immortal/Codes/Staging";
+
 FileName     File '/test/file.txt';
-Libname Input3 '/user/name/Libraay_one/';
 
 %include '/user/name/Libraay_one/Test/newfile.sas';
 
@@ -12,6 +12,7 @@ proc sql;
     select *
     from Input1.Marks;
 quit;
+
 Data Input1.Final;
     Set Work.Test;
 Run;
@@ -22,16 +23,16 @@ proc sql;
     from Input1.Final;
 quit;
 
- PROC EXPORT DATA= datasetname
+PROC EXPORT DATA= datasetname
 
-             OUTFILE= “/some/location/on/server/file.XLS"
+             OUTFILE= “/home/immortal/Codes/Staging/Staging2/file.XLS"
 
              DBMS=EXCEL REPLACE;
 
       SHEET=“excel worksheet name"; 
 
 PROC  IMPORT OUT=WORK.sample
-		DATAFILE="/user/bin/home/home.xlsx"
+		DATAFILE="/home/immortal/Codes/Staging/home.xlsx"
 		DBMS=EXCEL REPLACE;
 	RANGE="Sheet1$";
 	GETNAMES=YES;

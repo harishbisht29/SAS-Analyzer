@@ -1,5 +1,6 @@
 import re
 import os
+import time
 
 def removeComments(text):
     """ remove c-style comments.
@@ -103,7 +104,7 @@ def getMetadata(statments):
         match= re.search(p, stmt, re.IGNORECASE)
         if match:
             for m in re.findall(p,stmt):
-                table= m[1]
+                table= m[1].upper()
                 if table.upper() == "CONNECTION":
                     continue
                 # print(m)
@@ -113,7 +114,7 @@ def getMetadata(statments):
         p =pattern['output_table']
         match= re.search(p, stmt, re.IGNORECASE)
         if match:
-            table= match.group(2)
+            table= match.group(2).upper()
             metadata['output_table'].append(table)
     print(metadata)
     return metadata
@@ -121,6 +122,9 @@ def getMetadata(statments):
 def getFileName(location):
     return(os.path.basename(location))
 
+def getStatus(location):
+    print("Last modified: %s" % time.ctime(os.path.getmtime(location)))
+    
 def resolveReference(input, references):
     output= []
 
@@ -133,7 +137,7 @@ def resolveReference(input, references):
                 output.append(i)
         elif '.' in i:
             ref= i.split('.')[0]
-            f =i.split('.')[1]
+            f =i.split('.')[1]+'.sas7bat'
 
             for l in references:
                 if l['name'].upper() == ref.upper():
@@ -154,18 +158,23 @@ def generateOutputFile(metadata, code_file):
     # output Location
     export_locations= [i['location'] for i in metadata['proc_export']]
     resolved= resolveReference(metadata['output_table'], metadata['libname'])
-
-    output_location= resolved+ export_locations
-
+    outputs= resolved+ export_locations
+    output_file = [ os.path.basename(o) for o in outputs ]
+    output_location= [ os.path.dirname(o) for o in outputs ]
+    # input Location
+    import_locations= [i['location'] for i in metadata['proc_import']]
+    resolved= resolveReference(metadata['input_table'], metadata['libname'])
+    input_files= import_locations+ resolved
+    getStatus(code_file)
     output={
         "application_name":application_name,
         "program_name":code,
         "common_programs":common_programs,
         "program_location":program_location,
         "output_location":output_location,
-        # "output_file":,
+        "output_file":output_file,
         # "status":,
-        # "input_file":
+        "input_files":input_files
     }
     print(output)
 
